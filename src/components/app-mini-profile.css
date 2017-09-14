@@ -1,0 +1,12 @@
+app-mini-profile {
+  display: block;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #999;
+  cursor: pointer;
+}
+
+app-mini-profile p {
+  margin: 0;
+  padding: 0;
+}

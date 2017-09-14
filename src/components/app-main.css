@@ -1,0 +1,29 @@
+app-main {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+app-main .app-main__sidebar {
+  width: 300px;
+  background-color: #eee;
+  font-size: .8em;
+}
+
+app-main .app-main__main {
+  flex: 1;
+  display: flex;
+}
+
+app-main .app-main__main > * {
+  display: none;
+  flex: 1;
+}
+
+app-main .app-main__main > .visible {
+  display: block;
+}
+

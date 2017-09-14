@@ -1,0 +1,48 @@
+{
+  "name": "twlv-chat",
+  "version": "0.0.1",
+  "description": "twlv chat",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev:1": "nodemon -w .. --ignore src bin/server.js -- -d tmp/1 --port 8081 --ipc-port 1201",
+    "dev:2": "nodemon -w .. --ignore src bin/server.js -- -d tmp/2 --port 8082 --ipc-port 1202",
+    "test": "mocha --recursive",
+    "lint": "eslint .",
+    "build": "webpack",
+    "cover": "istanbul cover node_modules/.bin/_mocha -- -u exports --recursive -R spec test"
+  },
+  "author": "Ganesha <reekoheek@gmail.com> (http://sagara.id)",
+  "license": "MIT",
+  "devDependencies": {
+    "@webcomponents/custom-elements": "^1.0.2",
+    "@xinix/xin": "^2.4.2",
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.0.0",
+    "babel-loader": "^7.1.2",
+    "css-loader": "^0.28.7",
+    "electron": "1.7.6",
+    "eslint": "^4.6.1",
+    "eslint-config-standard": "^10.2.1",
+    "eslint-config-xinix": "^1.0.4",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-node": "^5.1.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "html-loader": "^0.5.1",
+    "html-webpack-plugin": "^2.30.1",
+    "istanbul": "^1.1.0-alpha.1",
+    "koa-webpack-middleware": "^1.0.7",
+    "mocha": "^3.5.3",
+    "style-loader": "^0.18.2",
+    "webpack": "^3.5.6",
+    "webpack-dev-server": "^2.8.1"
+  },
+  "dependencies": {
+    "bono": "^0.3.4",
+    "node-norm": "^0.3.5",
+    "twlv-logger": "^1.1.4",
+    "ws": "^3.1.0",
+    "yargs": "^8.0.2"
+  }
+}

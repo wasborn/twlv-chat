@@ -1,0 +1,11 @@
+{
+  "parser": "babel-eslint",
+  "extends": "xinix",
+  "env": {
+    "node": true,
+    "mocha": true
+  },
+  "rules": {
+    "no-console": ["error", { "allow": ["info", "warn", "error"] }]
+  }
+}

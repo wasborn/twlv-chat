@@ -1,0 +1,4 @@
+{
+  "ignoreRoot": [".git", "coverage", "tmp"],
+  "ignore": [ "src" ]
+}

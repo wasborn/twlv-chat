@@ -1,0 +1,19 @@
+<h3>Add Contact</h3>
+
+<form (submit)="doAdd(evt)">
+  <div>
+    <p>Address</p>
+    <input type="text" value="{{address}}">
+  </div>
+
+  <div>
+    <p>Name</p>
+    <p>
+      <input type="text" value="{{person.name}}">
+    </p>
+  </div>
+
+  <div>
+    <input type="submit" value="Add">
+  </div>
+</form>

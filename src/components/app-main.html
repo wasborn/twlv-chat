@@ -1,0 +1,15 @@
+<xin-lazy-view-middleware></xin-lazy-view-middleware>
+
+<div class="app-main__sidebar">
+  <app-mini-profile (click)='__app.navigate("/profile")'></app-mini-profile>
+  <app-contacts></app-contacts>
+</div>
+
+<xin-pager class="app-main__main">
+  <app-home lazy-view uri="/"></app-home>
+  <app-profile lazy-view uri="/profile"></app-profile>
+  <app-add-contact lazy-view uri="/add-contact"></app-add-contact>
+</xin-pager>
+
+<app-loading id="loading"></app-loading>
+<app-toast id="toast"></app-toast>

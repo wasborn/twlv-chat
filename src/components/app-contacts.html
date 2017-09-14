@@ -1,0 +1,20 @@
+<div class="app-contacts__command-group">
+  <a href="#!/add-contact">Add Contact</a>
+</div>
+
+<div class="app-contacts__search">
+  <input type="text" value="{{search}}" placeholder="Search...">
+</div>
+
+<div class="app-contacts__sessions">
+  <xin-for items="[[contacts]]" as="contact">
+    <template>
+      <div class="app-contacts__contact" (click)="selectSession(contact)">
+        <p>[[contact.name]]</p>
+        <p>[[contact.address]]</p>
+        <p>[[contact.status]]</p>
+      </div>
+    </template>
+  </xin-for>
+</div>
+

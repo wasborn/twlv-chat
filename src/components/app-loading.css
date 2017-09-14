@@ -1,0 +1,14 @@
+app-loading .loader {
+  background-color: rgba(100, 100, 100, .8);
+  padding: 2px 5px;
+  color: #fff;
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: none;
+  font-size: .8em;
+}
+
+app-loading.visible .loader {
+  display: block;
+}

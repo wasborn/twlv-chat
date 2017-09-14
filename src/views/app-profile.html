@@ -1,0 +1,19 @@
+<h3>Profile</h3>
+
+<form (submit)="doSave(evt)">
+  <div>
+    <p>Address</p>
+    <p>[[profile.address]]</p>
+  </div>
+
+  <div>
+    <p>Name</p>
+    <p>
+      <input type="text" value="{{profile.name}}">
+    </p>
+  </div>
+
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
