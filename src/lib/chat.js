@@ -47,8 +47,8 @@ export class Chat extends EventEmitter {
     return this.apiRequest({ command: cmd.SEARCH, payload: q });
   }
 
-  async addContact (contact) {
-    await this.apiSend({ command: cmd.ADD_CONTACT, payload: contact });
+  async follow (contact) {
+    await this.apiSend({ command: cmd.FOLLOW, payload: contact });
   }
 
   async setProfile (profile) {

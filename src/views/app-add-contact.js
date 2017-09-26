@@ -55,7 +55,7 @@ class AppAddContact extends View {
 
     try {
       loading.show();
-      await chat.addContact(this.person);
+      await chat.follow(this.person);
       loading.hide();
       toast.show(`Contact added`);
     } catch (err) {

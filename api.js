@@ -6,6 +6,7 @@ const logger = require('twlv-logger')('twlv-chat:api');
 const { EventEmitter } = require('events');
 const { Client } = require('twlv-client');
 const { Manager: SessionManager } = require('./lib/session');
+const { Manager: ContactManager } = require('./lib/contact');
 const assert = require('assert');
 
 class Api extends EventEmitter {
@@ -14,16 +15,20 @@ class Api extends EventEmitter {
 
     let api = this;
     this.sessions = new SessionManager({ api });
+    this.contacts = new ContactManager({ api });
 
     this.client = new Client(ipcUrl);
-    this.client.setRequestHandler(cmd.IPC_QUERY, this.getProfile.bind(this));
+    this.client.setRequestHandler(cmd.IPC_GETTIMELINE, this.getTimeline.bind(this));
     this.client.setRequestHandler(cmd.IPC_GETLOGS, this.getLogs.bind(this));
+    this.client.setRequestHandler(cmd.IPC_FOLLOW, this._onFollowed.bind(this));
     this.client.setMessageHandler(cmd.IPC_LOG, this._onIpcLog.bind(this));
     this.client.setMessageHandler(cmd.IPC_LOGS, this._onIpcLogs.bind(this));
+    this.client.setMessageHandler(cmd.IPC_TIMELINE, this._onTimeline.bind(this));
 
     this.server = new Server({ api });
     this.server.setConnectHandler(this._onUiConnect.bind(this));
     this.server.setCommandHandler(cmd.PROFILE, this.setProfile.bind(this));
+    this.server.setCommandHandler(cmd.FOLLOW, this.follow.bind(this));
 
     this.dao = new Dao({ api, dbFile });
     this.loop = new Loop({ api, loopInterval });
@@ -31,6 +36,10 @@ class Api extends EventEmitter {
 
   get port () {
     return this.server.port;
+  }
+
+  get profile () {
+    return this.contacts.profile;
   }
 
   async start (server) {
@@ -42,9 +51,10 @@ class Api extends EventEmitter {
 
     await this.server.start(server);
     await this.dao.start();
-    await this.loop.start();
 
-    this.profile = await this.initProfile();
+    await this.contacts.start();
+
+    await this.loop.start();
 
     logger.log('API listening at ws://localhost:%d', this.port);
   }
@@ -57,28 +67,18 @@ class Api extends EventEmitter {
     logger.log('API stopped');
   }
 
-  async initProfile () {
-    let profile = await this.dao.getProfile();
-    if (!profile) {
-      await this.dao.setProfile({
-        address: this.client.address,
-        name: `User ${this.client.address.substr(0, 4)}`,
-        publicKey: this.client.identity.publicKey,
-      });
-      profile = await this.dao.getProfile();
-    }
-
-    return profile;
-  }
-
-  getProfile () {
-    return this.profile;
-  }
-
   async setProfile (profile) {
-    await this.dao.setProfile(profile);
-    this.profile = await this.dao.getProfile();
+    await this.contacts.setProfile(profile);
     this.server.broadcast({ command: cmd.PROFILE, payload: this.profile });
+  }
+
+  getTimeline (vector, address) {
+    return this.profile.getTimeline(vector);
+  }
+
+  async _onFollowed (x, address) {
+    await this.profile.addFollower(address);
+    return this.profile.getTimeline();
   }
 
   async createSession ({ id, name, peers = [] }) {
@@ -126,6 +126,19 @@ class Api extends EventEmitter {
     let logs = await session.getLogs(vectors);
 
     return { id, logs };
+  }
+
+  async follow (address) {
+    assert(address, 'Start follow must specify address');
+
+    await this.profile.follow(address);
+  }
+
+  async _onTimeline ({ address, command, payload }) {
+    let contact = await this.contacts.getContact(payload.address);
+
+    await contact.log(payload.log);
+    // logger.log('_onTimeline %s %O', contact.address, payload.log);
   }
 
   async _onIpcLog ({ address, command, payload }) {
