@@ -18,6 +18,7 @@ class Api extends EventEmitter {
     this.contacts = new ContactManager({ api });
 
     this.client = new Client(ipcUrl);
+    this.client.setRequestHandler(cmd.IPC_QUERY, this.getProfile.bind(this));
     this.client.setRequestHandler(cmd.IPC_GETTIMELINE, this.getTimeline.bind(this));
     this.client.setRequestHandler(cmd.IPC_GETLOGS, this.getLogs.bind(this));
     this.client.setRequestHandler(cmd.IPC_FOLLOW, this._onFollowed.bind(this));
@@ -29,6 +30,7 @@ class Api extends EventEmitter {
     this.server.setConnectHandler(this._onUiConnect.bind(this));
     this.server.setCommandHandler(cmd.PROFILE, this.setProfile.bind(this));
     this.server.setCommandHandler(cmd.FOLLOW, this.follow.bind(this));
+    this.server.setCommandHandler(cmd.QUERY, this.query.bind(this));
 
     this.dao = new Dao({ api, dbFile });
     this.loop = new Loop({ api, loopInterval });
@@ -68,8 +70,16 @@ class Api extends EventEmitter {
   }
 
   async setProfile (profile) {
-    await this.contacts.setProfile(profile);
+    await this.contacts.profile.updateProfile(profile);
     this.server.broadcast({ command: cmd.PROFILE, payload: this.profile });
+  }
+
+  getProfile () {
+    return this.profile;
+  }
+
+  query (address) {
+    return this.client.request({ address, command: cmd.IPC_QUERY });
   }
 
   getTimeline (vector, address) {

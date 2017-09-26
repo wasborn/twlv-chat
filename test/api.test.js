@@ -17,6 +17,31 @@ describe('Api', () => {
     });
   });
 
+  describe('#query()', () => {
+    it('query contact', async () => {
+      let daemon1 = createDaemon();
+      let daemon2 = createDaemon();
+
+      await daemon1.start();
+      await daemon2.start();
+
+      await connect(daemon2, daemon1);
+
+      let api1 = createApi(daemon1);
+      let api2 = createApi(daemon2);
+
+      await api1.start();
+      await api2.start();
+
+      let rContact = await api1.query(daemon2.address);
+
+      assert.equal(rContact.address, api2.profile.address);
+      assert.equal(rContact.name, api2.profile.name);
+      assert.equal(rContact.publicKey, api2.profile.publicKey);
+      assert.equal(rContact.status, api2.profile.status);
+    });
+  });
+
   describe('profile', () => {
     it('has profile', async () => {
       let daemon = createDaemon();
@@ -145,7 +170,7 @@ describe('Api', () => {
 
   describe('timelines', () => {
     describe('#follow()', () => {
-      it.only('start following other peer', async () => {
+      it('start following other peer', async () => {
         let daemon1 = createDaemon();
         let daemon2 = createDaemon();
 
