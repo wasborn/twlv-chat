@@ -1,203 +1,163 @@
-const http = require('http');
-const WebSocket = require('ws');
-const Manager = require('node-norm');
-const { Client } = require('twlv-client');
+const { Dao } = require('./lib/dao');
+const { Server } = require('./lib/server');
+const { Loop } = require('./lib/loop');
 const cmd = require('./lib/cmd');
+const logger = require('twlv-logger')('twlv-chat:api');
+const { EventEmitter } = require('events');
+const { Client } = require('twlv-client');
+const { Manager: SessionManager } = require('./lib/session');
+const assert = require('assert');
 
-class Api {
-  constructor ({ ipcUrl, storeConfig = {} }) {
-    this.ipcUrl = ipcUrl;
-    this.storeConfig = storeConfig;
-    this.logger = require('twlv-logger')('twlv-chat:api');
-  }
+class Api extends EventEmitter {
+  constructor ({ ipcUrl, loopInterval = 5000, dbFile = ':memory:' }) {
+    super();
 
-  get module () {
-    return {
-      kind: 'a',
-      name: 'chat',
-      version: require('./package.json').version,
-    };
+    let api = this;
+    this.sessions = new SessionManager({ api });
+
+    this.client = new Client(ipcUrl);
+    this.client.setRequestHandler(cmd.IPC_QUERY, this.getProfile.bind(this));
+    this.client.setRequestHandler(cmd.IPC_GETLOGS, this.getLogs.bind(this));
+    this.client.setMessageHandler(cmd.IPC_LOG, this._onIpcLog.bind(this));
+    this.client.setMessageHandler(cmd.IPC_LOGS, this._onIpcLogs.bind(this));
+
+    this.server = new Server({ api });
+    this.server.setConnectHandler(this._onUiConnect.bind(this));
+    this.server.setCommandHandler(cmd.PROFILE, this.setProfile.bind(this));
+
+    this.dao = new Dao({ api, dbFile });
+    this.loop = new Loop({ api, loopInterval });
   }
 
   get port () {
-    return this.server ? this.server.address().port : 0;
+    return this.server.port;
   }
 
   async start (server) {
-    await this._bootClient();
-    await this._bootStore();
-    await this._bootServer(server);
-    await this._bootWS();
+    await this.client.connect({
+      kind: 'a',
+      name: 'chat',
+      version: require('./package.json').version,
+    });
 
-    await this._mainLoop();
+    await this.server.start(server);
+    await this.dao.start();
+    await this.loop.start();
 
-    this.logger.log('API listening at ws://localhost:%d', this.port);
+    this.profile = await this.initProfile();
+
+    logger.log('API listening at ws://localhost:%d', this.port);
   }
 
   async stop () {
-    await this._debootClient();
-    await this._debootServer();
-    this.logger.log('API stopped');
+    await this.loop.stop();
+    await this.dao.stop();
+    await this.server.stop();
+    await this.client.disconnect();
+    logger.log('API stopped');
   }
 
-  send (socket, message) {
-    this.logger.log('Send %o', message);
-
-    socket.send(JSON.stringify(message));
-  }
-
-  broadcast (message) {
-    this.logger.log('Broadcast %o', message);
-
-    let data = JSON.stringify(message);
-    this.wss.clients.forEach(socket => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(data);
-      }
-    });
-  }
-
-  _debootClient () {
-    this.client.disconnect();
-  }
-
-  async _debootServer () {
-    if (this._server) {
-      await new Promise(resolve => this._server.close(resolve));
-    }
-  }
-
-  async _mainLoop () {
-    let hasChanges = false;
-    await Promise.all(this.contacts.map(async contact => {
-      try {
-        let data = await this._query(contact.address);
-        if (contact.name !== data.name || !contact.status) {
-          Object.assign(contact, data, { status: 1 });
-          hasChanges = true;
-        }
-      } catch (err) {
-        // this.logger.error('Caught err', err);
-        if (contact.status) {
-          contact.status = 0;
-          hasChanges = true;
-        }
-      }
-    }));
-
-    if (hasChanges) {
-      this.broadcast({ command: cmd.CONTACTS, payload: this.contacts });
-    }
-
-    setTimeout(this._mainLoop.bind(this), 5000);
-  }
-
-  async _bootClient () {
-    this.client = new Client(this.ipcUrl);
-
-    this.client.setRequestHandler(cmd.IPC_QUERY, () => this.profile);
-
-    await this.client.connect(this.module);
-  }
-
-  async _bootStore () {
-    this.manager = new Manager(this.storeConfig);
-    this.store = this.manager.openSession();
-
-    let profile = await this.store.factory('profile').single();
+  async initProfile () {
+    let profile = await this.dao.getProfile();
     if (!profile) {
-      let { address } = this.client;
-      await this.store.factory('profile')
-        .insert({
-          address,
-          name: `User ${address.substr(0, 4)}`,
-        })
-        .save();
-      profile = await this.store.factory('profile').single();
-    }
-
-    this.profile = profile;
-    this.contacts = await this.store.factory('contact').all();
-  }
-
-  async _bootServer (server) {
-    if (!server) {
-      server = this._server = http.createServer((req, res) => res.end('api'));
-      await new Promise(resolve => this._server.listen(resolve));
-    }
-    this.server = server;
-  }
-
-  _bootWS (server) {
-    this.wss = new WebSocket.Server({ server: this.server });
-
-    this.wss.on('connection', socket => {
-      this.logger.log('API client connected, size %d', this.wss.clients.size);
-      this.send(socket, { command: cmd.PROFILE, payload: this.profile });
-      this.send(socket, { command: cmd.CONTACTS, payload: this.contacts });
-
-      socket.on('message', frame => {
-        // this.logger.log('Received wire message: %s', frame);
-        this._onWireMessage(socket, JSON.parse(frame));
+      await this.dao.setProfile({
+        address: this.client.address,
+        name: `User ${this.client.address.substr(0, 4)}`,
+        publicKey: this.client.identity.publicKey,
       });
+      profile = await this.dao.getProfile();
+    }
 
-      socket.on('close', () => {
-        this.logger.log('API client disconnected, size %d', this.wss.clients.size);
-      });
-    });
+    return profile;
   }
 
-  async _onWireMessage (socket, { id, command, payload }) {
-    this.logger.log('Received message: %o id: %s', { command, payload }, id);
+  getProfile () {
+    return this.profile;
+  }
 
-    let value;
-    let error;
-    try {
-      switch (command) {
-        case cmd.PROFILE:
-          value = await this._updateProfile(payload);
-          break;
-        case cmd.ADD_CONTACT:
-          value = await this._addContact(payload);
-          break;
-        case cmd.QUERY:
-          value = await this._query(payload);
-          break;
-        default:
-          this.logger.warn('Command %o not supported', command);
+  async setProfile (profile) {
+    await this.dao.setProfile(profile);
+    this.profile = await this.dao.getProfile();
+    this.server.broadcast({ command: cmd.PROFILE, payload: this.profile });
+  }
+
+  async createSession ({ id, name, peers = [] }) {
+    assert(peers.length > 1, 'Session needs 2 or more peers');
+
+    if (await this.sessions.get(id)) {
+      throw new Error('Session already exists');
+    }
+
+    let session = await this.sessions.create(id);
+    await session.init({ name, peers });
+
+    return session;
+  }
+
+  createPrivateSession (address) {
+    let peers = [ this.profile.address, address ].sort();
+    let id = peers.join('.');
+    let name = id;
+
+    return this.createSession({ id, name, peers });
+  }
+
+  getSession (id) {
+    return this.sessions.get(id);
+  }
+
+  getPrivateSession (address) {
+    return this.getSession([ this.profile.address, address ].sort().join('.'));
+  }
+
+  async sendMessage (id, message) {
+    let session = await this.getSession(id);
+    if (!session) {
+      throw new Error('Failed send message to unknown session');
+    }
+
+    await session.send(message);
+  }
+
+  async getLogs (id, vectors) {
+    assert(id, 'Get logs must specify id');
+
+    let session = await this.sessions.get(id);
+    let logs = await session.getLogs(vectors);
+
+    return { id, logs };
+  }
+
+  async _onIpcLog ({ address, command, payload }) {
+    let { id, log } = payload;
+    let session = await this.sessions.get(id);
+    if (!session) {
+      session = await this.sessions.create(id);
+      if (log.kind !== 'init') {
+        let { logs } = await this.client.request({ address, command: cmd.IPC_GETLOGS, payload: id });
+        while (logs.length) {
+          await session.log(logs.shift());
+        }
       }
-    } catch (err) {
-      error = err.message;
     }
 
-    if (id) {
-      if (error) {
-        this.send(socket, { id, command: '!error', payload: error });
-      } else {
-        this.send(socket, { id, command: '!value', payload: value });
+    await session.log(log);
+  }
+
+  async _onIpcLogs ({ address, command, payload }) {
+    let { id, logs } = payload;
+    let session = await this.sessions.get(id);
+    if (session) {
+      while (logs.length) {
+        await session.log(logs.shift());
       }
+    } else {
+      throw new Error('Unimplemented yet');
     }
   }
 
-  async _updateProfile (profile) {
-    await this.store.factory('profile', profile.id).set(profile).save();
-    this.profile = profile;
-    this.broadcast({ command: cmd.PROFILE, payload: profile });
-  }
-
-  async _addContact (contact) {
-    let existingContact = await this.store.factory('contact', { address: contact.address }).single();
-    if (existingContact) {
-      throw new Error('Contact already exists');
-    }
-    await this.store.factory('contact').insert(contact).save();
-
-    let contacts = await this.store.factory('contact').all();
-    this.broadcast({ command: cmd.CONTACTS, payload: contacts });
-  }
-
-  _query (address) {
-    return this.client.request({ address, command: cmd.IPC_QUERY, payload: address });
+  _onUiConnect (socket) {
+    this.server.send(socket, { command: cmd.PROFILE, payload: this.profile });
   }
 }
 

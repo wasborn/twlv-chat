@@ -29,22 +29,13 @@ process.on('uncaughtException', function (err) {
       ipcUrl = `ws://localhost:${daemon.port}`;
     }
 
-    const storeFile = path.join(dataDir, 'db.json');
-    let storeConfig = {
-      connections: [
-        {
-          name: 'default',
-          adapter: 'disk',
-          file: storeFile,
-        },
-      ],
-    };
+    let dbFile = path.join(dataDir, 'chat.db');
 
     logger.log('Environment: %s', env);
-    logger.log('Store file: %s', storeFile);
+    logger.log('DB file: %s', dbFile);
 
     let web = new Web({ env });
-    let api = new Api({ ipcUrl, storeConfig });
+    let api = new Api({ ipcUrl, dbFile });
     let server = http.Server(web.callback());
     server.listen(port, () => logger.log(`Server listening at http://localhost:${port}`));
     api.start(server);

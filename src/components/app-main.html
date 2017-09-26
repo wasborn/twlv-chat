@@ -2,7 +2,11 @@
 
 <div class="app-main__sidebar">
   <app-mini-profile (click)='__app.navigate("/profile")'></app-mini-profile>
-  <app-contacts></app-contacts>
+  <div style="padding: 10px">
+    <a href="#!/add-contact">Add Contact</a>
+  </div>
+  <app-search></app-search>
+  <app-sessions></app-sessions>
 </div>
 
 <xin-pager class="app-main__main">

@@ -1,13 +1,13 @@
 import { Component, define } from '@xinix/xin';
-import html from './app-contacts.html';
+import html from './app-sessions.html';
 import { Logger } from 'twlv-logger';
 
-import './app-contacts.css';
+import './app-sessions.css';
 
-const logger = new Logger('twlv-chat:components:app-contacts');
+const logger = new Logger('twlv-chat:components:app-sessions');
 const { chat } = window;
 
-class AppContacts extends Component {
+class AppSessions extends Component {
   get template () {
     return html;
   }
@@ -18,7 +18,7 @@ class AppContacts extends Component {
         type: String,
         value: '',
       },
-      contacts: {
+      sessions: {
         type: Array,
         value: () => ([]),
       },
@@ -28,14 +28,10 @@ class AppContacts extends Component {
   ready () {
     super.ready();
 
-    chat.subscribe('contacts', contacts => {
-      this.set('contacts', (contacts || []).slice());
+    chat.subscribe('sessions', sessions => {
+      this.set('sessions', (sessions || []).slice());
     });
-  }
-
-  selectSession (contact) {
-    console.log('>>', contact);
   }
 }
 
-define('app-contacts', AppContacts);
+define('app-sessions', AppSessions);

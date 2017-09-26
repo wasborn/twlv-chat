@@ -31,7 +31,7 @@ class AppProfile extends View {
 
     try {
       loading.show();
-      await chat.updateProfile(this.profile);
+      await chat.setProfile(this.profile);
       loading.hide();
       toast.show('Profile updated');
     } catch (err) {

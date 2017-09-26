@@ -6,7 +6,8 @@ import './app-main.css';
 
 import '@xinix/xin/middlewares';
 import './app-mini-profile';
-import './app-contacts';
+import './app-search';
+import './app-sessions';
 import './app-loading';
 import './app-toast';
 

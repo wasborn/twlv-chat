@@ -3,27 +3,33 @@ import { EventEmitter } from 'events';
 import { Request } from './request';
 import cmd from '../../lib/cmd';
 
+const logger = new Logger('twlv-chat:components:app-main');
 const WebSocket = window.WebSocket;
 
 export class Chat extends EventEmitter {
   constructor () {
     super();
 
-    this.logger = new Logger('twlv-chat:components:app-main');
     this.requests = [];
   }
 
   connect (url = `ws://${window.location.host}`) {
     return new Promise(resolve => {
-      this.logger.log('Connecting to %s', url);
+      logger.log('Connecting to %s', url);
 
       this.ws = new WebSocket(url);
       this.ws.onopen = resolve;
       this.ws.onmessage = evt => {
-        // this.logger.log('Received wire message', evt.data);
+        // logger.log('Received wire message', evt.data);
         let message = JSON.parse(evt.data);
 
         this._onMessage(message);
+      };
+      this.ws.onclose = evt => {
+        logger.log('Disconnected');
+        if (!evt.wasClean) {
+          setTimeout(() => this.connect(url), 5000);
+        }
       };
     });
   }
@@ -37,11 +43,15 @@ export class Chat extends EventEmitter {
     return this.apiRequest({ command: cmd.QUERY, payload: address });
   }
 
+  search (q) {
+    return this.apiRequest({ command: cmd.SEARCH, payload: q });
+  }
+
   async addContact (contact) {
     await this.apiSend({ command: cmd.ADD_CONTACT, payload: contact });
   }
 
-  async updateProfile (profile) {
+  async setProfile (profile) {
     await this.apiSend({ command: cmd.PROFILE, payload: profile });
   }
 
@@ -69,7 +79,7 @@ export class Chat extends EventEmitter {
   }
 
   _onMessage ({ id, command, payload }) {
-    this.logger.log('Received message %O id: %s', { command, payload }, id);
+    logger.log('Received message %o', { command, payload });
 
     if (id) {
       let req = this.requests.find(req => req.id === id);

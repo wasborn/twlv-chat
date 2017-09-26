@@ -40,7 +40,9 @@
   },
   "dependencies": {
     "bono": "^0.3.4",
-    "node-norm": "^0.3.5",
+    "es7-sleep": "^1.0.0",
+    "js-sha3": "^0.6.1",
+    "sqlite": "^2.8.0",
     "twlv-logger": "^1.1.4",
     "ws": "^3.1.0",
     "yargs": "^8.0.2"
