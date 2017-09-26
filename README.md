@@ -1,14 +1,18 @@
 # twlv-chat
 
-////////////////////////////////////////////////////////////////////////////////
+Implementation of twlv app for chat
 
-session = create session
-session set name
-session add peer * n
+## Development
 
-////////////////////////////////////////////////////////////////////////////////
+Use TDD
 
-session = create session
-session add log * n
+```bash
+LOGLEVEL=twlv-chat:log,*:info npm test -- -w
+```
 
-////////////////////////////////////////////////////////////////////////////////
+To see how peer interaction in UI
+
+```bash
+LOGLEVEL=twlv-chat:log,*:info npm run dev:1
+LOGLEVEL=twlv-chat:log,*:info npm run dev:2
+```
